@@ -9,8 +9,7 @@ Join our discussion group [Here](https://t.me/NocturnDao)
 ```
 Sudo apt-get install wget 
 ```
-### Install Node
-
+### Install & Run Zora Node
 ```
 wget -O Zora.sh https://raw.githubusercontent.com/0xGery/Networks/main/Zora/Zora.sh && chmod +x Zora.sh && ./Zora.sh
 ```
