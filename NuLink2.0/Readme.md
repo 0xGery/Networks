@@ -33,7 +33,10 @@ source /root/nulink-venv/bin/activate
 
 # Install NuLink
 wget https://download.nulink.org/release/core/nulink-0.5.0-py3-none-any.whl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 pip install nulink-0.5.0-py3-none-any.whl
+source /root/nulink-venv/bin/activate
 
 # Set Environment Variables
 export NULINK_KEYSTORE_PASSWORD=<YOUR_NULINK_STORAGE_PASSWORD>
