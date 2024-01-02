@@ -1,6 +1,6 @@
 First
 ```
-Sudo apt-get install wget 
+sudo apt-get install wget 
 ```
 
 Second
