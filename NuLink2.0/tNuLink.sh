@@ -59,6 +59,7 @@ cd $GETH_DIR
 
 # Prompting user to enter the public address manually
 read -p "Enter the public address of the key (with 0x prefix): " PUBLIC_ADDRESS
+read -p "Enter the path to the secret key file: " KEYSTORE_FILE
 
 # Docker installation
 sudo apt-get remove docker docker-engine docker.io containerd runc
@@ -73,8 +74,8 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 docker --version || { echo "Failed to install Docker"; exit 1; }
 
 # Docker commands with stored passwords
-docker run -it --rm -p 9151:9151 -v $PWD/keystore:/root/keystore -v $NULINK_DIR:/code -v $NULINK_DIR:/home/circleci/.local/share/nulink -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD nulink/nulink nulink ursula init --signer keystore:///root/keystore/$KEYSTORE_FILE --eth-provider https://data-seed-prebsc-2-s2.binance.org:8545 --network horus --payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 --payment-network bsc_testnet --operator-address $PUBLIC_ADDRESS --max-gas-price 10000000000 || { echo "Failed to run Docker container for initialization"; exit 1; }
+docker run -it --rm -p 9151:9151 -v $KEYSTORE_FILE:/root/keystore -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD nulink/nulink nulink ursula init --signer keystore:///root/keystore --eth-provider https://data-seed-prebsc-2-s2.binance.org:8545 --network horus --payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 --payment-network bsc_testnet --operator-address $PUBLIC_ADDRESS --max-gas-price 10000000000 || { echo "Failed to run Docker container for initialization"; exit 1; }
 
-docker run --restart on-failure -d --name ursula -p 9151:9151 -v $PWD/keystore:/root/keystore -v $NULINK_DIR:/code -v $NULINK_DIR:/home/circleci/.local/share/nulink -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD -e NULINK_OPERATOR_ETH_PASSWORD=$NULINK_OPERATOR_ETH_PASSWORD nulink/nulink nulink ursula run --no-block-until-ready || { echo "Failed to run Docker container 'ursula'"; exit 1; }
+docker run --restart on-failure -d --name ursula -p 9151:9151 -v $KEYSTORE_FILE:/root/keystore -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD -e NULINK_OPERATOR_ETH_PASSWORD=$NULINK_OPERATOR_ETH_PASSWORD nulink/nulink nulink ursula run --no-block-until-ready || { echo "Failed to run Docker container 'ursula'"; exit 1; }
 
 docker logs -f ursula
