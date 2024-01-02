@@ -46,8 +46,15 @@ sudo dpkg --configure -a || { echo "Failed to reconfigure packages"; exit 1; }
 
 # Installing necessary packages
 sleep 2
-sudo apt install -y python3-pip ca-certificates curl gnupg || { echo "Failed to install required packages"; exit 1; }
+sudo apt install -y python3-pip ca-certificates curl gnupg expect || { echo "Failed to install required packages"; exit 1; }
 pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
+
+# Check if expect is installed
+if ! command -v expect &> /dev/null
+then
+    echo "Expect could not be found, please install it."
+    exit 1
+fi
 
 # Installing and setting up Geth
 sleep 2
