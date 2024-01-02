@@ -46,15 +46,16 @@ sudo dpkg --configure -a || { echo "Failed to reconfigure packages"; exit 1; }
 
 # Installing necessary packages
 sleep 2
-sudo apt install -y python3-pip ca-certificates curl gnupg expect || { echo "Failed to install required packages"; exit 1; }
-pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
+sudo apt install -y python3-pip ca-certificates curl gnupg || { echo "Failed to install required packages"; exit 1; }
 
-# Check if expect is installed
-if ! command -v expect &> /dev/null
-then
-    echo "Expect could not be found, please install it."
-    exit 1
-fi
+# Update pip to the latest version
+pip install --upgrade pip
+
+# Install Rust compiler (needed for nucypher-core)
+sudo apt install -y cargo || { echo "Failed to install Rust compiler"; exit 1; }
+
+# Ensure the Rust compiler is in the PATH
+export PATH="$HOME/.cargo/bin:$PATH"
 
 # Installing and setting up Geth
 sleep 2
@@ -75,9 +76,21 @@ if [ ! -d "./keystore" ]; then
     exit 1
 fi
 
-# Extracting the public address
-PUBLIC_ADDRESS=$(cat ./keystore/* | grep address | sed 's/.*address":"\([^"]*\).*/\1/')
-echo "Public address of the new account: $PUBLIC_ADDRESS"
+# Extracting the public address and path of the secret key file
+KEYSTORE_FILE=$(ls ./keystore/)
+if [ -z "$KEYSTORE_FILE" ]; then
+    echo "No keystore file found, account creation failed."
+    exit 1
+fi
+PUBLIC_ADDRESS=$(echo $KEYSTORE_FILE | grep -o -E "[0-9a-fA-F]{40}")
+SECRET_KEY_PATH="/root/geth-linux-amd64-1.10.23-d901d853/keystore/$KEYSTORE_FILE"
+if [ -z "$PUBLIC_ADDRESS" ] || [ ! -f "$SECRET_KEY_PATH" ]; then
+    echo "Failed to extract public address or secret key path from keystore file."
+    exit 1
+fi
+
+echo "Public address of the new account: 0x$PUBLIC_ADDRESS"
+echo "Path of the secret key file: $SECRET_KEY_PATH"
 
 # Docker Installation
 sleep 2
@@ -112,7 +125,7 @@ export NULINK_OPERATOR_ETH_PASSWORD=$(prompt_for_password "Enter worker account 
 # Function to ask for funding confirmation
 ask_for_funding_confirmation() {
     while true; do
-        read -p "Please fund your $PUBLIC_ADDRESS with testBNB, have you funded it? (Y/N): " response
+        read -p "Please fund your 0x$PUBLIC_ADDRESS with testBNB, have you funded it? (Y/N): " response
         case $response in
             [Yy]* ) break;;
             [Nn]* ) echo "Waiting for funding. Please fund your account.";;
@@ -132,7 +145,7 @@ docker run -it --rm \
 -v $NULINK_DIR:/home/circleci/.local/share/nulink \
 -e NULINK_KEYSTORE_PASSWORD \
 nulink/nulink nulink ursula init \
---signer keystore:///code/UTC--2023-12-31T17-42-14.316243885Z--f3defb90c2f03e904bd9662a1f16dcd1ca69b00a \
+--signer "keystore://$SECRET_KEY_PATH" \
 --eth-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
 --network horus \
 --payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
