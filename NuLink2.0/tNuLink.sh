@@ -39,7 +39,7 @@ sudo apt install -y ufw python3-pip ca-certificates curl gnupg || { echo "Failed
 pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
 
 # Configuring UFW Firewall
-sudo ufw enable || { echo "Failed to enable UFW"; exit 1; }
+# sudo ufw enable || { echo "Failed to enable UFW"; exit 1; }
 sudo ufw allow 9151 || { echo "Failed to configure UFW rules"; exit 1; }
 
 # Installing and setting up Geth
