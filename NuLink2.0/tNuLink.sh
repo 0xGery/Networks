@@ -84,7 +84,26 @@ fi
 # Change permissions of the keystore file
 chmod 644 keystore/$KEYSTORE_FILE
 
-# ... [Rest of the script including Docker commands]
+sleep 2
+echo "Installing Docker..."
+sudo apt-get remove docker docker-engine docker.io containerd runc
+sudo apt-get update
+sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+# Verifying Docker installation
+sudo docker --version || { echo "Failed to install Docker"; exit 1; }
+
 
 # Docker commands with updated volume binding and using stored passwords
 docker run -it --rm \
