@@ -14,8 +14,6 @@ echo "    \:\__\        \::/  /       \::/  /         \:\__\      \::/  /       
 echo "     \/__/         \/__/         \/__/           \/__/       \/__/         \/__/         \/__/    "
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
-#!/bin/bash
-
 # Function to prompt for password input with hidden input
 prompt_for_password() {
     local password
@@ -40,75 +38,58 @@ NULINK_KEYSTORE_PASSWORD=$(prompt_for_password "")
 echo "Enter worker account password (min 8 characters):"
 NULINK_OPERATOR_ETH_PASSWORD=$(prompt_for_password "")
 
-echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-# Attempt to fix broken packages and clean up
-sudo dpkg --configure -a
-sudo apt-get clean
-sudo apt-get update --fix-missing
-
-# Fixing any broken packages
-sudo apt-get -f install
-
-# Reconfiguring packages
-sudo dpkg --configure -a
-
 # Installing necessary packages
-sudo apt install -y python3-pip ca-certificates curl gnupg expect
-
-pip install virtualenv
-
-# Installing necessary packages
-sleep 2
-sudo apt install -y python3-pip ca-certificates curl gnupg expect || { echo "Failed to install required packages"; exit 1; }
+sudo apt-get update || { echo "Failed to update repositories"; exit 1; }
+sudo apt-get install -y python3-pip ca-certificates curl gnupg expect || { echo "Failed to install required packages"; exit 1; }
 pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
 
 # Installing and setting up Geth
-sleep 2
 GETH_URL="https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.23-d901d853.tar.gz"
 GETH_DIR="/root/geth-linux-amd64-1.10.23-d901d853"
 wget -qO- $GETH_URL | tar xvz -C /root || { echo "Failed to download and extract Geth"; exit 1; }
 cd $GETH_DIR || { echo "Failed to navigate to Geth directory"; exit 1; }
 
-# Prompting user for Geth account password manually and creating a new account
-./geth account new --keystore ./keystore
+# Creating a new account
+PUBLIC_ADDRESS=$(./geth account new --keystore ./keystore | grep -Po '(?<=Public address of the key:   0x)\w+')
+
+if [ -z "$PUBLIC_ADDRESS" ]; then
+    echo "Failed to extract public address."
+    exit 1
+fi
+
+echo "Public address of the new account: $PUBLIC_ADDRESS"
 
 # Automatically retrieve the path of the newly created keystore file
 KEYSTORE_FILE=$(ls keystore/ | head -n 1)
 
-# Check if keystore file exists
 if [ -z "$KEYSTORE_FILE" ]; then
     echo "Keystore file not found, account creation failed."
     exit 1
 fi
 
-# Change permissions of the keystore file
 chmod 644 keystore/$KEYSTORE_FILE
 
-sleep 2
-echo "Installing Docker..."
+# Docker Installation
 sudo apt-get remove docker docker-engine docker.io containerd runc
 sudo apt-get update
-sudo apt-get install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
 # Verifying Docker installation
 sudo docker --version || { echo "Failed to install Docker"; exit 1; }
 
+# Setting NuLink directory
+NULINK_DIR="/root/nulink"
+mkdir -p $NULINK_DIR
+cp "$GETH_DIR/keystore"/* "$NULINK_DIR" || { echo "Failed to copy keystore files"; exit 1; }
+chmod -R 777 $NULINK_DIR
 
 # Docker commands with updated volume binding and using stored passwords
 docker run -it --rm \
 -p 9151:9151 \
--v $PWD/keystore:/root/keystore \
 -v $NULINK_DIR:/code \
 -v $NULINK_DIR:/home/circleci/.local/share/nulink \
 -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD \
@@ -121,16 +102,13 @@ nulink/nulink nulink ursula init \
 --operator-address "0x$PUBLIC_ADDRESS" \
 --max-gas-price 10000000000 || { echo "Failed to run Docker container for initialization"; exit 1; }
 
-sleep 2
 docker run --restart on-failure -d \
 --name ursula \
 -p 9151:9151 \
--v $PWD/keystore:/root/keystore \
 -v $NULINK_DIR:/code \
 -v $NULINK_DIR:/home/circleci/.local/share/nulink \
 -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD \
 -e NULINK_OPERATOR_ETH_PASSWORD=$NULINK_OPERATOR_ETH_PASSWORD \
 nulink/nulink nulink ursula run --no-block-until-ready || { echo "Failed to run Docker container 'ursula'"; exit 1; }
 
-sleep 2
 docker logs -f ursula
