@@ -44,3 +44,29 @@ export NULINK_OPERATOR_ETH_PASSWORD=<YOUR_WORKER_ACCOUNT_PASSWORD>
 
 # Finalize Installation
 python -c "import nulink"
+
+### fund your address with testbnb
+# Initialize Node Configuration.
+docker run -it --rm \
+-p 9151:9151 \
+-v /root/nulink:/code \
+-v /root/nulink:/home/circleci/.local/share/nulink \
+-e NULINK_KEYSTORE_PASSWORD \
+nulink/nulink nulink ursula init \
+--signer <ETH KEYSTORE URI> \
+--eth-provider <NULINK PROVIDER URI>  \
+--network <NULINK NETWORK NAME> \
+--payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
+--payment-network bsc_testne \
+--operator-address <WORKER ADDRESS> \
+--max-gas-price 10000000000
+
+# Run Node
+docker run --restart on-failure -d \
+--name ursula \
+-p 9151:9151 \
+-v /root/nulink:/code \
+-v /root/nulink:/home/circleci/.local/share/nulink \
+-e NULINK_KEYSTORE_PASSWORD \
+-e NULINK_OPERATOR_ETH_PASSWORD \
+nulink/nulink nulink ursula run --no-block-until-ready
