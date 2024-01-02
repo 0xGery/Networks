@@ -63,21 +63,11 @@ GETH_DIR="/root/geth-linux-amd64-1.10.23-d901d853"
 wget -qO- $GETH_URL | tar xvz -C /root || { echo "Failed to download and extract Geth"; exit 1; }
 cd $GETH_DIR || { echo "Failed to navigate to Geth directory"; exit 1; }
 
-# Create a new account using expect to handle password input
-sleep 2
-# Create a new account using expect to handle password input
-GETH_ACCOUNT_PASSWORD=$(prompt_for_password "Enter new Geth account password: ")
+# Prompting user for Geth account password manually
+echo "Please manually enter a new password for the Geth account when prompted."
 
-expect << EOF
-spawn ./geth account new --keystore ./keystore
-expect "Your new account is locked with a password. Please give a password. Do not forget this password."
-sleep 1
-send "$GETH_ACCOUNT_PASSWORD\r"
-expect "Repeat password:"
-sleep 1
-send "$GETH_ACCOUNT_PASSWORD\r"
-expect eof
-EOF
+# Running Geth account creation command
+./geth account new --keystore ./keystore
 
 # Checking if keystore directory is created
 if [ ! -d "./keystore" ]; then
@@ -85,10 +75,9 @@ if [ ! -d "./keystore" ]; then
     exit 1
 fi
 
+# Extracting the public address
 PUBLIC_ADDRESS=$(cat ./keystore/* | grep address | sed 's/.*address":"\([^"]*\).*/\1/')
 echo "Public address of the new account: $PUBLIC_ADDRESS"
-
-
 
 # Docker Installation
 sleep 2
