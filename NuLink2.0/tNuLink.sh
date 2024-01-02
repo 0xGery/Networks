@@ -65,17 +65,19 @@ cd $GETH_DIR || { echo "Failed to navigate to Geth directory"; exit 1; }
 
 # Create a new account using expect to handle password input
 sleep 2
+# Create a new account using expect to handle password input
 GETH_ACCOUNT_PASSWORD=$(prompt_for_password "Enter new Geth account password: ")
 
-expect -c "
-set timeout -1
+expect << EOF
 spawn ./geth account new --keystore ./keystore
-expect \"Your new account is locked with a password. Please give a password. Do not forget this password.\"
-send \"$GETH_ACCOUNT_PASSWORD\r\"
-expect \"Repeat password:\"
-send \"$GETH_ACCOUNT_PASSWORD\r\"
+expect "Your new account is locked with a password. Please give a password. Do not forget this password."
+sleep 1
+send "$GETH_ACCOUNT_PASSWORD\r"
+expect "Repeat password:"
+sleep 1
+send "$GETH_ACCOUNT_PASSWORD\r"
 expect eof
-"
+EOF
 
 # Checking if keystore directory is created
 if [ ! -d "./keystore" ]; then
@@ -85,6 +87,7 @@ fi
 
 PUBLIC_ADDRESS=$(cat ./keystore/* | grep address | sed 's/.*address":"\([^"]*\).*/\1/')
 echo "Public address of the new account: $PUBLIC_ADDRESS"
+
 
 
 # Docker Installation
