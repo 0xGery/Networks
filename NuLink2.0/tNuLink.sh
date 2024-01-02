@@ -38,20 +38,21 @@ NULINK_KEYSTORE_PASSWORD=$(prompt_for_password "Enter NuLink keystore password (
 NULINK_OPERATOR_ETH_PASSWORD=$(prompt_for_password "Enter worker account password (min 8 characters): ")
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-# ... [Additional script initialization, if any]
-
-# Cleaning up package cache and updating repositories
+# Attempt to fix broken packages and clean up
+sudo dpkg --configure -a
 sudo apt-get clean
-sleep 2
-sudo apt-get update || { echo "Failed to update repositories"; exit 1; }
+sudo apt-get update --fix-missing
 
 # Fixing any broken packages
-sleep 2
-sudo apt-get -f install || { echo "Failed to fix broken packages"; exit 1; }
+sudo apt-get -f install
 
 # Reconfiguring packages
-sleep 2
-sudo dpkg --configure -a || { echo "Failed to reconfigure packages"; exit 1; }
+sudo dpkg --configure -a
+
+# Installing necessary packages
+sudo apt install -y python3-pip ca-certificates curl gnupg expect
+
+pip install virtualenv
 
 # Installing necessary packages
 sleep 2
