@@ -31,24 +31,33 @@ prompt_for_password() {
     echo $password
 }
 
-# Updating system repositories
+# Cleaning up package cache and updating repositories
+sudo apt-get clean
+sleep 2
 sudo apt-get update || { echo "Failed to update repositories"; exit 1; }
 
+# Fixing any broken packages
+sleep 2
+sudo apt-get -f install || { echo "Failed to fix broken packages"; exit 1; }
+
+# Reconfiguring packages
+sleep 2
+sudo dpkg --configure -a || { echo "Failed to reconfigure packages"; exit 1; }
+
 # Installing necessary packages
-sudo apt install -y ufw python3-pip ca-certificates curl gnupg || { echo "Failed to install required packages"; exit 1; }
+sleep 2
+sudo apt install -y python3-pip ca-certificates curl gnupg || { echo "Failed to install required packages"; exit 1; }
 pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
 
-# Configuring UFW Firewall
-# sudo ufw enable || { echo "Failed to enable UFW"; exit 1; }
-sudo ufw allow 9151 || { echo "Failed to configure UFW rules"; exit 1; }
-
 # Installing and setting up Geth
+sleep 2
 GETH_URL="https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.23-d901d853.tar.gz"
 GETH_DIR="/root/geth-linux-amd64-1.10.23-d901d853"
 wget -qO- $GETH_URL | tar xvz -C /root || { echo "Failed to download and extract Geth"; exit 1; }
 cd $GETH_DIR || { echo "Failed to navigate to Geth directory"; exit 1; }
 
 # Prompting user for Geth account password
+sleep 2
 GETH_ACCOUNT_PASSWORD=$(prompt_for_password "Enter new Geth account password: ")
 
 # Create a new account using expect to handle password input
@@ -62,10 +71,12 @@ expect eof
 " || { echo "Failed to create new Geth account"; exit 1; }
 
 # Extracting the public address
+sleep 2
 PUBLIC_ADDRESS=$(cat ./keystore/* | grep address | sed 's/.*address":"\([^"]*\).*/\1/')
 echo "Public address of the new account: $PUBLIC_ADDRESS"
 
 # Docker Installation
+sleep 2
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -74,9 +85,11 @@ sudo apt-get update || { echo "Failed to update repositories for Docker installa
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || { echo "Failed to install Docker"; exit 1; }
 
 # Docker Pull
+sleep 2
 docker pull nulink/nulink:latest || { echo "Failed to pull nulink/nulink:latest"; exit 1; }
 
 # NuLink Setup
+sleep 2
 NULINK_DIR="/root/nulink"
 mkdir -p $NULINK_DIR
 cp "$GETH_DIR/keystore"/* "$NULINK_DIR" || { echo "Failed to copy keystore files"; exit 1; }
@@ -88,6 +101,7 @@ pip install nulink-0.5.0-py3-none-any.whl || { echo "Failed to install nulink-0.
 source $NULINK_DIR-venv/bin/activate
 
 # Environment Variables
+sleep 2
 export NULINK_KEYSTORE_PASSWORD=$(prompt_for_password "Enter NuLink keystore password (min 8 characters): ")
 export NULINK_OPERATOR_ETH_PASSWORD=$(prompt_for_password "Enter worker account password (min 8 characters): ")
 
@@ -104,6 +118,7 @@ ask_for_funding_confirmation() {
 }
 
 # Asking user for funding confirmation
+sleep 2
 ask_for_funding_confirmation
 
 # Running Docker container with NuLink configuration for initialization
@@ -122,6 +137,7 @@ nulink/nulink nulink ursula init \
 --max-gas-price 10000000000 || { echo "Failed to run Docker container for initialization"; exit 1; }
 
 # Running Docker container 'ursula' in detached mode
+sleep 2
 docker run --restart on-failure -d \
 --name ursula \
 -p 9151:9151 \
