@@ -34,69 +34,51 @@ prompt_for_password() {
 # Prompt for NuLink keystore password and operator password
 echo "Enter NuLink keystore password (min 8 characters):"
 NULINK_KEYSTORE_PASSWORD=$(prompt_for_password "")
-sleep 2
 
 echo "Enter worker account password (min 8 characters):"
 NULINK_OPERATOR_ETH_PASSWORD=$(prompt_for_password "")
-sleep 2
-
-# Installing necessary packages
-sudo apt-get update || { echo "Failed to update repositories"; exit 1; }
-sleep 2
-sudo apt-get install -y python3-pip ca-certificates curl gnupg expect || { echo "Failed to install required packages"; exit 1; }
-sleep 2
-pip install virtualenv || { echo "Failed to install virtualenv"; exit 1; }
-sleep 2
 
 # Installing and setting up Geth
+sleep 2
 GETH_URL="https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.23-d901d853.tar.gz"
 GETH_DIR="/root/geth-linux-amd64-1.10.23-d901d853"
 wget -qO- $GETH_URL | tar xvz -C /root || { echo "Failed to download and extract Geth"; exit 1; }
-sleep 2
 cd $GETH_DIR || { echo "Failed to navigate to Geth directory"; exit 1; }
 
-# Creating a new account
+# Prompting user for Geth account password manually and creating a new account
 ./geth account new --keystore ./keystore
+
+# User input for public address
+echo "Enter the public address of the key (with 0x prefix): "
+read PUBLIC_ADDRESS
+
+# Docker Installation and setup
 sleep 2
-
-# Automatically retrieve the path of the newly created keystore file
-KEYSTORE_FILE=$(ls keystore/ | head -n 1)
-
-if [ -z "$KEYSTORE_FILE" ]; then
-    echo "Keystore file not found, account creation failed."
-    exit 1
-fi
-
-chmod 644 keystore/$KEYSTORE_FILE
-sleep 2
-
-# Docker Installation
-sudo apt-get remove docker docker-engine docker.io containerd runc
 sudo apt-get update
-sleep 2
-sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-sleep 2
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sleep 2
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-sleep 2
+sudo apt-get install docker-ce docker-ce-cli containerd.io
 
 # Verifying Docker installation
-sudo docker --version || { echo "Failed to install Docker"; exit 1; }
-sleep 2
+docker --version || { echo "Failed to verify Docker installation"; exit 1; }
 
-# Setting NuLink directory
-NULINK_DIR="/root/nulink"
-mkdir -p $NULINK_DIR
-cp "$GETH_DIR/keystore"/* "$NULINK_DIR" || { echo "Failed to copy keystore files"; exit 1; }
-chmod -R 777 $NULINK_DIR
-sleep 2
+# Asking user for funding confirmation
+ask_for_funding_confirmation() {
+    while true; do
+        read -p "Please fund your $PUBLIC_ADDRESS with testBNB, have you funded it? (Y/N): " response
+        case $response in
+            [Yy]* ) break;;
+            [Nn]* ) echo "Waiting for funding. Please fund your account.";;
+            * ) echo "Please answer Y (yes) or N (no).";;
+        esac
+    done
+}
 
-# Docker commands with updated volume binding and using stored passwords
+ask_for_funding_confirmation
+
+# Docker run commands
+sleep 2
 docker run -it --rm \
 -p 9151:9151 \
+-v $PWD/keystore:/root/keystore \
 -v $NULINK_DIR:/code \
 -v $NULINK_DIR:/home/circleci/.local/share/nulink \
 -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD \
@@ -106,14 +88,13 @@ nulink/nulink nulink ursula init \
 --network horus \
 --payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
 --payment-network bsc_testnet \
---operator-address "0x$PUBLIC_ADDRESS" \
+--operator-address $PUBLIC_ADDRESS \
 --max-gas-price 10000000000 || { echo "Failed to run Docker container for initialization"; exit 1; }
-
-sleep 2
 
 docker run --restart on-failure -d \
 --name ursula \
 -p 9151:9151 \
+-v $PWD/keystore:/root/keystore \
 -v $NULINK_DIR:/code \
 -v $NULINK_DIR:/home/circleci/.local/share/nulink \
 -e NULINK_KEYSTORE_PASSWORD=$NULINK_KEYSTORE_PASSWORD \
