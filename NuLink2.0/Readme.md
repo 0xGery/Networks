@@ -57,8 +57,23 @@ nulink/nulink nulink ursula init \
 --eth-provider <NULINK PROVIDER URI>  \
 --network <NULINK NETWORK NAME> \
 --payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
---payment-network bsc_testne \
+--payment-network bsc_testnet \
 --operator-address <WORKER ADDRESS> \
+--max-gas-price 10000000000
+
+### as example:
+docker run -it --rm \
+-p 9151:9151 \
+-v /root/nulink:/code \
+-v /root/nulink:/home/circleci/.local/share/nulink \
+-e NULINK_KEYSTORE_PASSWORD \
+nulink/nulink nulink ursula init \
+--signer keystore:///code/UTC--2024-01-03T09-38-01.936840855Z--cae23d00f1552606fd57e231620382bd12bcc7be \
+--eth-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
+--network horus \
+--payment-provider https://data-seed-prebsc-2-s2.binance.org:8545 \
+--payment-network bsc_testnet \
+--operator-address 0xCae23d00F1552606fd57e231620382bd12BcC7be \
 --max-gas-price 10000000000
 
 # Run Node
