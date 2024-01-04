@@ -38,12 +38,12 @@ source $HOME/.cargo/env
 pip install nulink-0.5.0-py3-none-any.whl
 source /root/nulink-venv/bin/activate
 
+# Finalize Installation
+python -c "import nulink"
+
 # Set Environment Variables
 export NULINK_KEYSTORE_PASSWORD=<YOUR_NULINK_STORAGE_PASSWORD>
 export NULINK_OPERATOR_ETH_PASSWORD=<YOUR_WORKER_ACCOUNT_PASSWORD>
-
-# Finalize Installation
-python -c "import nulink"
 
 ### fund your address with testbnb
 # Initialize Node Configuration.
